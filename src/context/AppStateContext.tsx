@@ -19,6 +19,7 @@ interface AppStateContextType {
   bookings: Booking[];
   addBooking: (booking: Omit<Booking, 'id' | 'status'>, isOffline?: boolean) => Booking;
   cancelBooking: (bookingId: string) => boolean;
+  updateBookingStatus: (bookingId: string, status: 'CONFIRMED' | 'CANCELLED') => void;
 
   // Health Records
   customHealthRecords: HealthRecord[];
@@ -98,7 +99,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const newBooking: Booking = {
       ...bookingData,
       id: `book_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      status: isOffline ? 'PENDING_OFFLINE' : 'CONFIRMED',
+      status: isOffline ? 'PENDING_OFFLINE' : 'PENDING',
     };
     const nextBookings = [newBooking, ...bookings];
     setBookings(nextBookings);
@@ -113,6 +114,14 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setBookings(updated);
     storage.setItem('user_bookings', updated);
     return true;
+  };
+
+  const updateBookingStatus = (bookingId: string, status: 'CONFIRMED' | 'CANCELLED') => {
+    const updated = bookings.map((b) =>
+      b.id === bookingId ? { ...b, status } : b
+    );
+    setBookings(updated);
+    storage.setItem('user_bookings', updated);
   };
 
   const addHealthRecord = (record: HealthRecord) => {
@@ -133,6 +142,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         bookings,
         addBooking,
         cancelBooking,
+        updateBookingStatus,
         customHealthRecords,
         addHealthRecord,
       }}>

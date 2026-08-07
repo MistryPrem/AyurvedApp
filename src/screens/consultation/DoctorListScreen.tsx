@@ -8,14 +8,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { generateDoctors } from '../../data/generators';
 import { DoctorCard } from '../../components/consultation/DoctorCard';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useDoctors } from '../../context/DoctorContext';
 import { Doctor } from '../../types';
-
-// Pre-generate stress dataset (5,000 doctors)
-const ALL_DOCTORS = generateDoctors(5000);
 
 const SPECIALTY_FILTERS = [
   'All',
@@ -28,12 +25,13 @@ const SPECIALTY_FILTERS = [
 export const DoctorListScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { doctors } = useDoctors();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
 
-  // Filter 5,000 doctors cleanly with useMemo
+  // Filter doctors cleanly with useMemo
   const filteredDoctors = useMemo(() => {
-    let result = ALL_DOCTORS;
+    let result = doctors;
 
     if (selectedSpecialty !== 'All') {
       result = result.filter((doc) => doc.specialty === selectedSpecialty);
@@ -47,7 +45,7 @@ export const DoctorListScreen: React.FC<{ navigation: any }> = ({ navigation }) 
     }
 
     return result;
-  }, [searchQuery, selectedSpecialty]);
+  }, [doctors, searchQuery, selectedSpecialty]);
 
   const renderItem = useCallback(
     ({ item }: { item: Doctor }) => (

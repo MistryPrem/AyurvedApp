@@ -44,7 +44,8 @@ export interface Booking {
   doctorSpecialty: string;
   slot: string;
   bookingDate: string;
-  status: 'CONFIRMED' | 'CANCELLED' | 'PENDING_OFFLINE';
+  patientName: string;
+  status: 'CONFIRMED' | 'CANCELLED' | 'PENDING_OFFLINE' | 'PENDING';
   fee: number;
 }
 

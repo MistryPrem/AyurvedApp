@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  TextInput,
 } from 'react-native';
 import { Doctor } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
@@ -14,6 +14,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { offlineSync } from '../../services/offlineSync';
 import { FallbackImage } from '../../components/common/FallbackImage';
 
@@ -27,8 +28,10 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
   const { addBooking, bookings } = useAppState();
   const { isOnline } = useNetwork();
   const { showToast } = useToast();
+  const { userProfile } = useAuth();
 
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [patientName, setPatientName] = useState(userProfile?.fullName || '');
 
   // Check double booking attempts
   const isSlotBooked = (slot: string) => {
@@ -38,6 +41,12 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
   };
 
   const handleBookSlot = () => {
+    const trimmedName = patientName.trim();
+    if (!trimmedName) {
+      showToast('Please enter patient name', 'warning');
+      return;
+    }
+
     if (!selectedSlot) {
       showToast('Please select an available slot first.', 'warning');
       return;
@@ -54,6 +63,7 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
         doctorId: doctor.id,
         doctorName: doctor.name,
         slot: selectedSlot,
+        patientName: trimmedName,
       });
       addBooking(
         {
@@ -63,6 +73,7 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
           slot: selectedSlot,
           bookingDate: new Date().toISOString().split('T')[0],
           fee: doctor.consultationFee,
+          patientName: trimmedName,
         },
         true
       );
@@ -78,6 +89,7 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
       slot: selectedSlot,
       bookingDate: new Date().toISOString().split('T')[0],
       fee: doctor.consultationFee,
+      patientName: trimmedName,
     });
 
     showToast('Consultation Booked Successfully!', 'success');
@@ -97,7 +109,7 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={[styles.profileHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <FallbackImage
             source={{ uri: doctor.avatarUrl }}
@@ -124,6 +136,22 @@ export const DoctorDetailScreen: React.FC<{ route: any; navigation: any }> = ({
             </View>
           </View>
         </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Patient Name</Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              color: colors.text,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          placeholder="Enter Patient Name"
+          placeholderTextColor={colors.textMuted}
+          value={patientName}
+          onChangeText={setPatientName}
+        />
 
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Available Slot</Text>
 
@@ -252,6 +280,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    marginBottom: 20,
   },
   slotsGrid: {
     flexDirection: 'row',

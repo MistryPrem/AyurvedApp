@@ -15,19 +15,38 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { OfflineBanner } from '../components/common/OfflineBanner';
+import { useAuth } from '../context/AuthContext';
+import { LoginScreen } from '../screens/auth/LoginScreen';
+
+import { AdminPanel } from '../screens/admin/AdminPanel';
+import { DoctorPanel } from '../screens/doctor/DoctorPanel';
 
 export const RootNavigator: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { isAuthenticated, userProfile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'consult' | 'shop' | 'health' | 'settings'>('consult');
+  const [activeTab, setActiveTab] = useState<'consult' | 'shop' | 'health' | 'settings' | 'admin' | 'doctor'>('consult');
   const [consultStackState, setConsultStackState] = useState<{ screen: string; params?: any }>({
     screen: 'DoctorList',
   });
   const [shopStackState, setShopStackState] = useState<{ screen: string; params?: any }>({
     screen: 'ProductList',
   });
+
+  // Automatically reset active tab when user role changes or logs in
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.role === 'admin') {
+        setActiveTab('admin');
+      } else if (userProfile.role === 'doctor') {
+        setActiveTab('doctor');
+      } else {
+        setActiveTab('consult');
+      }
+    }
+  }, [userProfile]);
 
   const navigateConsult = useCallback((screen: string, params?: any) => {
     setConsultStackState({ screen, params });
@@ -52,13 +71,19 @@ export const RootNavigator: React.FC = () => {
       }
     }
 
-    if (activeTab !== 'consult') {
-      setActiveTab('consult');
+    if (activeTab !== 'consult' && activeTab !== 'admin' && activeTab !== 'doctor') {
+      if (userProfile?.role === 'admin') {
+        setActiveTab('admin');
+      } else if (userProfile?.role === 'doctor') {
+        setActiveTab('doctor');
+      } else {
+        setActiveTab('consult');
+      }
       return true;
     }
 
     return false;
-  }, [activeTab, consultStackState.screen, shopStackState.screen]);
+  }, [activeTab, consultStackState.screen, shopStackState.screen, userProfile]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -85,19 +110,40 @@ export const RootNavigator: React.FC = () => {
     [navigateShop, handleGoBack, shopStackState.screen]
   );
 
-  return (
-    <SafeAreaView
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-          paddingTop: insets.top,
-        },
-      ]}>
-      <OfflineBanner />
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
+  const renderContent = () => {
+    if (userProfile?.role === 'admin') {
+      return (
+        <View style={styles.mainContainer}>
+          <View style={[styles.tabContent, { display: activeTab === 'admin' ? 'flex' : 'none' }]}>
+            <AdminPanel />
+          </View>
+          <View style={[styles.tabContent, { display: activeTab === 'settings' ? 'flex' : 'none' }]}>
+            <SettingsScreen />
+          </View>
+        </View>
+      );
+    }
+
+    if (userProfile?.role === 'doctor') {
+      return (
+        <View style={styles.mainContainer}>
+          <View style={[styles.tabContent, { display: activeTab === 'doctor' ? 'flex' : 'none' }]}>
+            <DoctorPanel />
+          </View>
+          <View style={[styles.tabContent, { display: activeTab === 'settings' ? 'flex' : 'none' }]}>
+            <SettingsScreen />
+          </View>
+        </View>
+      );
+    }
+
+    // Default User view
+    return (
       <View style={styles.mainContainer}>
-        {/* Keep Tab Views Mounted for Instant Sub-Millisecond Switching */}
         <View style={[styles.tabContent, { display: activeTab === 'consult' ? 'flex' : 'none' }]}>
           {consultStackState.screen === 'DoctorList' && (
             <DoctorListScreen navigation={consultNav} />
@@ -136,8 +182,94 @@ export const RootNavigator: React.FC = () => {
           <SettingsScreen />
         </View>
       </View>
+    );
+  };
 
-      {/* Dynamic Ayurvedic Bottom Tab Navigation */}
+  const renderBottomBar = () => {
+    if (userProfile?.role === 'admin') {
+      return (
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+              height: 60 + (insets.bottom > 0 ? insets.bottom : 0),
+            },
+          ]}>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('admin')}>
+            <Text style={{ fontSize: 20 }}>⚙️</Text>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'admin' ? colors.primary : colors.textMuted },
+              ]}>
+              Admin Panel
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('settings')}>
+            <Text style={{ fontSize: 20 }}>📋</Text>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'settings' ? colors.primary : colors.textMuted },
+              ]}>
+              {t('settings')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (userProfile?.role === 'doctor') {
+      return (
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+              height: 60 + (insets.bottom > 0 ? insets.bottom : 0),
+            },
+          ]}>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('doctor')}>
+            <Text style={{ fontSize: 20 }}>🩺</Text>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'doctor' ? colors.primary : colors.textMuted },
+              ]}>
+              Dashboard
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('settings')}>
+            <Text style={{ fontSize: 20 }}>📋</Text>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'settings' ? colors.primary : colors.textMuted },
+              ]}>
+              {t('settings')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Default User bottom bar
+    return (
       <View
         style={[
           styles.bottomBar,
@@ -228,6 +360,21 @@ export const RootNavigator: React.FC = () => {
           </Text>
         </TouchableOpacity>
       </View>
+    );
+  };
+
+  return (
+    <SafeAreaView
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          paddingTop: insets.top,
+        },
+      ]}>
+      <OfflineBanner />
+      {renderContent()}
+      {renderBottomBar()}
     </SafeAreaView>
   );
 };

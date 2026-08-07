@@ -1,16 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Switch, ScrollView } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { useAppState } from '../../context/AppStateContext';
-import { featureFlags } from '../../services/featureFlags';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const SettingsScreen: React.FC = () => {
   const { mode, toggleTheme, colors } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { showToast } = useToast();
-  const [flags, setFlags] = React.useState(featureFlags.getAllFlags());
+  const { logout, userProfile } = useAuth();
 
   const handleLanguageToggle = () => {
     const next = language === 'en' ? 'hi' : 'en';
@@ -18,56 +17,65 @@ export const SettingsScreen: React.FC = () => {
     showToast(`Language switched to ${next === 'en' ? 'English' : 'Hindi'}`, 'info');
   };
 
-  const handleFlagToggle = (key: keyof typeof flags) => {
-    const newVal = !flags[key];
-    featureFlags.setFlag(key, newVal);
-    setFlags(featureFlags.getAllFlags());
-    showToast(`Feature "${key}" set to ${newVal ? 'ENABLED' : 'DISABLED'}`, 'info');
-  };
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.text }]}>{t('settings')}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+        <Text style={[styles.title, { color: colors.text }]}>{t('settings')}</Text>
 
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: colors.text }]}>Dark Mode</Text>
-          <Switch value={mode === 'dark'} onValueChange={toggleTheme} color={colors.primary} />
-        </View>
-
-        <View style={[styles.row, { borderTopWidth: 1, borderTopColor: colors.border }]}>
-          <Text style={[styles.label, { color: colors.text }]}>Language / भाषा</Text>
-          <TouchableOpacity
-            style={[styles.langBtn, { backgroundColor: colors.primary }]}
-            onPress={handleLanguageToggle}>
-            <Text style={styles.langText}>{language === 'en' ? 'English' : 'हिंदी'}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Text style={[styles.sectionHeader, { color: colors.text }]}>Feature Flags & Remote Config</Text>
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        {Object.entries(flags).map(([key, val], idx) => (
-          <View
-            key={key}
-            style={[
-              styles.flagRow,
-              idx > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
-            ]}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={[styles.flagKey, { color: colors.text }]}>{key}</Text>
-              <Text style={[styles.flagValStatus, { color: val ? colors.success : colors.error }]}>
-                {val ? 'ENABLED' : 'DISABLED'}
-              </Text>
+        {/* User Profile Card Header */}
+        {userProfile && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.profileAvatar, { backgroundColor: colors.primary }]}>
+                <Text style={styles.profileAvatarText}>
+                  {userProfile.fullName ? userProfile.fullName.charAt(0).toUpperCase() : 'U'}
+                </Text>
+              </View>
+              <View style={{ marginLeft: 16 }}>
+                <Text style={[styles.profileName, { color: colors.text }]}>{userProfile.fullName}</Text>
+                <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>
+                  {userProfile.email} • {userProfile.role.toUpperCase()}
+                </Text>
+              </View>
             </View>
-            <Switch
-              value={val}
-              onValueChange={() => handleFlagToggle(key as any)}
-              color={colors.primary}
-            />
           </View>
-        ))}
-      </View>
+        )}
+
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: colors.text }]}>Dark Mode</Text>
+            <Switch value={mode === 'dark'} onValueChange={toggleTheme} trackColor={{ false: '#767577', true: colors.primary }} />
+          </View>
+
+          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Language / भाषा</Text>
+            <TouchableOpacity
+              style={[styles.langBtn, { backgroundColor: colors.primary }]}
+              onPress={handleLanguageToggle}>
+              <Text style={styles.langText}>{language === 'en' ? 'English' : 'हिंदी'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+
+
+        <Text style={[styles.sectionHeader, { color: colors.text }]}>Account</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Active Session
+            </Text>
+            <TouchableOpacity
+              style={[styles.logoutBtn, { backgroundColor: colors.error }]}
+              onPress={() => {
+                logout();
+                showToast('Logged out successfully', 'info');
+              }}>
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -112,6 +120,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  logoutBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  logoutText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   flagRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -125,6 +142,26 @@ const styles = StyleSheet.create({
   flagValStatus: {
     fontSize: 11,
     fontWeight: '700',
+    marginTop: 2,
+  },
+  profileAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  profileMeta: {
+    fontSize: 13,
     marginTop: 2,
   },
 });

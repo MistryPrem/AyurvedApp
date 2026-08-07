@@ -12,9 +12,17 @@ import { NetworkProvider } from './src/context/NetworkContext';
 import { AppStateProvider } from './src/context/AppStateContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { AuthProvider } from './src/context/AuthContext';
+import { DoctorProvider } from './src/context/DoctorContext';
+import { SplashScreen } from './src/screens/common/SplashScreen';
 
 function Main() {
   const { mode } = useTheme();
+  const [isSplashLoading, setIsSplashLoading] = React.useState(true);
+
+  if (isSplashLoading) {
+    return <SplashScreen onFinish={() => setIsSplashLoading(false)} />;
+  }
 
   return (
     <>
@@ -33,7 +41,11 @@ function App() {
             <ToastProvider>
               <NetworkProvider>
                 <AppStateProvider>
-                  <Main />
+                  <AuthProvider>
+                    <DoctorProvider>
+                      <Main />
+                    </DoctorProvider>
+                  </AuthProvider>
                 </AppStateProvider>
               </NetworkProvider>
             </ToastProvider>
